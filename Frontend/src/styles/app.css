@@ -1,0 +1,142 @@
+.app-container {
+  display: flex;
+  height: 100vh;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.app-sidebar {
+  position: relative;
+  z-index: 200;
+  border-right: 1px solid var(--border-color);
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-header {
+  position: relative;
+  z-index: 100;
+}
+
+.app-main-content {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  padding-bottom: 104px;
+}
+
+.app-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+}
+
+.app-loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+.library-view {
+  padding: 24px;
+}
+
+.library-view-header h2 {
+  font-size: 1.8rem;
+}
+
+.library-view-header p {
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.library-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.library-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-card img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.library-card-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.library-card-type {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.library-empty {
+  color: var(--text-tertiary);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    position: fixed;
+    left: -300px;
+    top: 0;
+    height: 100vh;
+    transition: left var(--transition-base);
+    z-index: 300;
+  }
+
+  .app-sidebar.open {
+    left: 0;
+  }
+
+  .app-container {
+    flex-direction: column;
+  }
+
+  .app-main {
+    width: 100%;
+  }
+
+  .app-main-content {
+    padding-bottom: 96px;
+  }
+
+  .library-view {
+    padding: 14px;
+  }
+}
