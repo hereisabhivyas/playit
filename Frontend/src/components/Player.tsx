@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Song } from '../types';
 import '../styles/player.css';
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ||
+  'https://playit-v00f.onrender.com/api';
+
 interface PlayerProps {
   currentSong: Song | null;
   isPlaying: boolean;
@@ -27,7 +31,7 @@ const Player: React.FC<PlayerProps> = ({
   const streamSource = useMemo(() => {
     if (!currentSong) return '';
     if (currentSong.streamUrl) return currentSong.streamUrl;
-    if (currentSong.id) return `http://localhost:5000/api/songs/${currentSong.id}/stream`;
+    if (currentSong.id) return `${API_BASE_URL}/songs/${currentSong.id}/stream`;
     return '';
   }, [currentSong]);
 

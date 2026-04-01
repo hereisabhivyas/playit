@@ -14,8 +14,31 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/playit';
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  'http://localhost:3000',
+  'http://localhost:5173',
+].filter(Boolean);
+
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests (curl, health checks) and same-origin requests.
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+  }),
+);
 app.use(express.json());
 
 // MongoDB Connection
@@ -65,5 +88,5 @@ app.use('/api/auth', requireDbConnection, authRoutes);
 app.use('/api/profile', requireDbConnection, profileRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
