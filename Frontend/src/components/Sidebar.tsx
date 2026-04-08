@@ -1,4 +1,5 @@
 import React from 'react';
+import { getFallbackImage } from '../utils/imageFallback';
 import '../styles/sidebar.css';
 
 interface NavItem {
@@ -127,8 +128,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     onError={(event) => {
                       event.currentTarget.src =
                         item.type === 'song'
-                          ? 'https://via.placeholder.com/56x56?text=Song'
-                          : 'https://via.placeholder.com/56x56?text=List';
+                          ? getFallbackImage('Song', 56)
+                          : getFallbackImage('List', 56);
                     }}
                   />
                   <div className="history-card-info">

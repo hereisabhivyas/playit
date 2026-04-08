@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { UpdateProfilePayload, UserProfile, Song } from '../types';
 import { uploadUserSong, fetchUserSongs } from '../services/api';
+import { getFallbackImage } from '../utils/imageFallback';
 import '../styles/profile-page.css';
 
 interface ProfilePageProps {
@@ -281,7 +282,7 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
                     alt={song.title}
                     className="song-cover"
                     onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/120x120?text=Music';
+                      e.currentTarget.src = getFallbackImage('Music', 120);
                     }}
                   />
                   <div className="song-info">

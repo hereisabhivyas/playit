@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { fetchArtists, fetchPlaylists, fetchSongs } from '../services/api';
+import { getFallbackImage } from '../utils/imageFallback';
 import type { Artist, Playlist, Song } from '../types';
 import '../styles/search-page.css';
 
@@ -130,7 +131,7 @@ const SearchPage = ({
             src={song.cover}
             alt={song.title}
             onError={(event) => {
-              event.currentTarget.src = 'https://via.placeholder.com/120x120?text=Song';
+              event.currentTarget.src = getFallbackImage('Song', 120);
             }}
           />
           <h4>{song.title}</h4>
@@ -153,7 +154,7 @@ const SearchPage = ({
             src={playlist.cover}
             alt={playlist.name}
             onError={(event) => {
-              event.currentTarget.src = 'https://via.placeholder.com/120x120?text=Playlist';
+              event.currentTarget.src = getFallbackImage('Playlist', 120);
             }}
           />
           <h4>{playlist.name}</h4>
@@ -171,7 +172,7 @@ const SearchPage = ({
             src={artist.image}
             alt={artist.name}
             onError={(event) => {
-              event.currentTarget.src = 'https://via.placeholder.com/120x120?text=Artist';
+              event.currentTarget.src = getFallbackImage('Artist', 120);
             }}
           />
           <h4>{artist.name}</h4>

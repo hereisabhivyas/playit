@@ -99,13 +99,13 @@ const Player: React.FC<PlayerProps> = ({
   };
 
   const progressWidth = audioDuration > 0 ? `${(currentTime / audioDuration) * 100}%` : '0%';
-  const defaultCover = 'https://via.placeholder.com/56x56?text=Music';
+  const defaultCover = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><rect fill="%23333" width="56" height="56"/><text x="50%" y="50%" font-size="12" fill="%23999" text-anchor="middle" dy=".3em">🎵</text></svg>';
 
   return (
     <div className="player">
       <audio
         ref={audioRef}
-        src={streamSource}
+        src={streamSource || undefined}
         preload="metadata"
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => {

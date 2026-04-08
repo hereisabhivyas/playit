@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Song, Playlist, Artist } from '../types';
 import { fetchPlaylists, fetchSongs, fetchArtists } from '../services/api';
+import { getFallbackImage } from '../utils/imageFallback';
 import '../styles/main-content.css';
 
 interface MainContentProps {
@@ -70,7 +71,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onPlaylistSelec
                         alt={playlist.name}
                         className="card-image"
                         onError={(e) => {
-                          e.currentTarget.src = 'https://via.placeholder.com/180x180?text=Playlist';
+                          e.currentTarget.src = getFallbackImage('Playlist', 180);
                         }}
                       />
                       <h3 className="card-title">{playlist.name}</h3>
@@ -109,7 +110,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onPlaylistSelec
                         alt={song.title}
                         className="card-image"
                         onError={(e) => {
-                          e.currentTarget.src = 'https://via.placeholder.com/180x180?text=Song';
+                          e.currentTarget.src = getFallbackImage('Song', 180);
                         }}
                       />
                       <h3 className="card-title">{song.title}</h3>
@@ -145,7 +146,7 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onPlaylistSelec
                         className="card-image"
                         style={{ borderRadius: '50%' }}
                         onError={(e) => {
-                          e.currentTarget.src = 'https://via.placeholder.com/150x150?text=Artist';
+                          e.currentTarget.src = getFallbackImage('Artist', 150);
                         }}
                       />
                       <h3 className="card-title">{artist.name}</h3>

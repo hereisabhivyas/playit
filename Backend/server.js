@@ -27,6 +27,21 @@ const connectToDatabase = async () => {
       serverSelectionTimeoutMS: 5000,
     });
     console.log('Connected to MongoDB');
+
+    try {
+      const userCollection = mongoose.connection.db.collection('users');
+      const indexes = await userCollection.indexes();
+      const legacyIndex = indexes.find((index) => index.name === 'privateCode_1');
+
+      if (legacyIndex) {
+        await userCollection.dropIndex('privateCode_1');
+        console.log('Dropped legacy users.privateCode_1 index');
+      }
+    } catch (cleanupErr) {
+      if (cleanupErr?.codeName !== 'NamespaceNotFound' && cleanupErr?.code !== 26) {
+        console.warn('Could not clean up legacy users.privateCode_1 index:', cleanupErr.message);
+      }
+    }
   } catch (err) {
     console.error('MongoDB connection error:', err);
   }
