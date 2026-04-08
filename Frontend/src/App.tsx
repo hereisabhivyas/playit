@@ -49,6 +49,22 @@ function App() {
   const [activeView, setActiveView] = useState<AppView>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [playHistory, setPlayHistory] = useState<HistoryItem[]>([]);
+  const [viewState, setViewState] = useState<{ history: AppView[]; index: number }>({
+    history: ['home'],
+    index: 0,
+  });
+
+  const navigateToView = (view: AppView) => {
+    const base = viewState.history.slice(0, viewState.index + 1);
+    if (base[base.length - 1] !== view) {
+      const nextHistory = [...base, view];
+      setViewState({
+        history: nextHistory,
+        index: nextHistory.length - 1,
+      });
+    }
+    setActiveView(view);
+  };
 
   useEffect(() => {
     const syncProfile = async () => {
@@ -107,7 +123,7 @@ function App() {
     };
 
     setPlayHistory((previous) => [historyItem, ...previous.filter((item) => item.key !== historyItem.key)].slice(0, 5));
-    setActiveView('library');
+    navigateToView('library');
   };
 
   const handlePlayPause = () => {
@@ -133,7 +149,7 @@ function App() {
   const handleAuthSuccess = (token: string, user: UserProfile) => {
     setAuthToken(token);
     setCurrentUser(user);
-    setActiveView('home');
+    navigateToView('home');
     localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
   };
@@ -156,14 +172,34 @@ function App() {
   };
 
   const handleSidebarNavChange = (nextView: SidebarNav) => {
-    setActiveView(nextView);
+    navigateToView(nextView);
   };
 
   const handleSearchFromHeader = (value: string) => {
     setSearchQuery(value);
     if (value.trim()) {
-      setActiveView('search');
+      navigateToView('search');
     }
+  };
+
+  const handleNavigateBack = () => {
+    if (viewState.index <= 0) return;
+    const nextIndex = viewState.index - 1;
+    setViewState({
+      ...viewState,
+      index: nextIndex,
+    });
+    setActiveView(viewState.history[nextIndex]);
+  };
+
+  const handleNavigateForward = () => {
+    if (viewState.index >= viewState.history.length - 1) return;
+    const nextIndex = viewState.index + 1;
+    setViewState({
+      ...viewState,
+      index: nextIndex,
+    });
+    setActiveView(viewState.history[nextIndex]);
   };
 
   const handleHistoryItemClick = (historyKey: string) => {
@@ -172,12 +208,12 @@ function App() {
 
     if (item.type === 'song' && item.song) {
       handleSongSelect(item.song);
-      setActiveView('home');
+      navigateToView('home');
       return;
     }
 
     if (item.type === 'playlist') {
-      setActiveView('library');
+      navigateToView('library');
     }
   };
 
@@ -215,9 +251,10 @@ function App() {
         <header className="app-header">
           <Header
             onSearch={handleSearchFromHeader}
-            username={currentUser.username}
-            onHomeClick={() => setActiveView('home')}
-            onProfileClick={() => setActiveView('profile')}
+            onHomeClick={() => navigateToView('home')}
+            onProfileClick={() => navigateToView('profile')}
+            onNavigateBack={handleNavigateBack}
+            onNavigateForward={handleNavigateForward}
             onLogout={handleLogout}
           />
         </header>
@@ -250,7 +287,7 @@ function App() {
                       type="button"
                       key={item.key}
                       className="library-card"
-                      onClick={() => handleHistoryItemClick(item.id)}
+                      onClick={() => handleHistoryItemClick(item.key)}
                     >
                       <img src={item.image} alt={item.name} />
                       <div className="library-card-name">{item.name}</div>

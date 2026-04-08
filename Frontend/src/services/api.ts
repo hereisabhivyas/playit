@@ -10,6 +10,7 @@ import type {
 } from '../types/index';
 
 const API_BASE_URL = 'http://localhost:5000/api';
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
 const getErrorMessage = async (response: Response): Promise<string> => {
   try {
@@ -26,9 +27,37 @@ const authHeaders = (token: string): HeadersInit => ({
   Authorization: `Bearer ${token}`,
 });
 
+const normalizeMediaUrl = (value?: string): string => {
+  if (!value) return '';
+  const trimmed = value.trim();
+
+  if (/^(https?:|data:|blob:)/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/')) {
+    return `${API_ORIGIN}${trimmed}`;
+  }
+
+  return `${API_ORIGIN}/${trimmed}`;
+};
+
 const normalizeSong = (song: Song): Song => ({
   ...song,
   id: song.id || (song as Song & { _id?: string })._id || '',
+  cover: normalizeMediaUrl(song.cover),
+  streamUrl: normalizeMediaUrl(song.streamUrl),
+});
+
+const normalizePlaylist = (playlist: Playlist): Playlist => ({
+  ...playlist,
+  cover: normalizeMediaUrl(playlist.cover),
+  songs: playlist.songs?.map(normalizeSong) || [],
+});
+
+const normalizeArtist = (artist: Artist): Artist => ({
+  ...artist,
+  image: normalizeMediaUrl(artist.image),
 });
 
 // Songs API
@@ -118,13 +147,12 @@ export const fetchUserSongs = async (): Promise<Song[]> => {
       return [];
     }
 
-    const response = await fetch(`${API_BASE_URL}/songs`, {
+    const response = await fetch(`${API_BASE_URL}/songs/mine`, {
       headers: authHeaders(token),
     });
     if (!response.ok) throw new Error('Failed to fetch songs');
 
-    const allSongs = ((await response.json()) as Song[]).map(normalizeSong);
-    return allSongs.filter((song: Song) => song.isUserUploaded);
+    return ((await response.json()) as Song[]).map(normalizeSong);
   } catch (error) {
     console.error('Error fetching user songs:', error);
     return [];
@@ -136,7 +164,8 @@ export const fetchPlaylists = async (): Promise<Playlist[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/playlists`);
     if (!response.ok) throw new Error('Failed to fetch playlists');
-    return await response.json();
+    const playlists = (await response.json()) as Playlist[];
+    return playlists.map(normalizePlaylist);
   } catch (error) {
     console.error('Error fetching playlists:', error);
     return [];
@@ -147,7 +176,7 @@ export const fetchPlaylistById = async (id: string): Promise<Playlist | null> =>
   try {
     const response = await fetch(`${API_BASE_URL}/playlists/${id}`);
     if (!response.ok) throw new Error('Failed to fetch playlist');
-    return await response.json();
+    return normalizePlaylist((await response.json()) as Playlist);
   } catch (error) {
     console.error('Error fetching playlist:', error);
     return null;
@@ -162,7 +191,7 @@ export const createPlaylist = async (playlist: Playlist): Promise<Playlist | nul
       body: JSON.stringify(playlist),
     });
     if (!response.ok) throw new Error('Failed to create playlist');
-    return await response.json();
+    return normalizePlaylist((await response.json()) as Playlist);
   } catch (error) {
     console.error('Error creating playlist:', error);
     return null;
@@ -174,7 +203,8 @@ export const fetchArtists = async (): Promise<Artist[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/artists`);
     if (!response.ok) throw new Error('Failed to fetch artists');
-    return await response.json();
+    const artists = (await response.json()) as Artist[];
+    return artists.map(normalizeArtist);
   } catch (error) {
     console.error('Error fetching artists:', error);
     return [];
@@ -185,7 +215,7 @@ export const fetchArtistById = async (id: string): Promise<Artist | null> => {
   try {
     const response = await fetch(`${API_BASE_URL}/artists/${id}`);
     if (!response.ok) throw new Error('Failed to fetch artist');
-    return await response.json();
+    return normalizeArtist((await response.json()) as Artist);
   } catch (error) {
     console.error('Error fetching artist:', error);
     return null;
@@ -200,7 +230,7 @@ export const createArtist = async (artist: Artist): Promise<Artist | null> => {
       body: JSON.stringify(artist),
     });
     if (!response.ok) throw new Error('Failed to create artist');
-    return await response.json();
+    return normalizeArtist((await response.json()) as Artist);
   } catch (error) {
     console.error('Error creating artist:', error);
     return null;

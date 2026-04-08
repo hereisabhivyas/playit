@@ -141,29 +141,52 @@ const Player: React.FC<PlayerProps> = ({
               className={`player-button ${isShuffle ? 'active' : ''}`}
               onClick={() => setIsShuffle(!isShuffle)}
               title="Shuffle"
+              type="button"
             >
-              🔀
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3.8 6h2.7c1.5 0 2.9.7 3.8 1.8l6.1 8.3c.9 1.2 2.3 1.9 3.8 1.9h.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M3.8 18h2.7c1.4 0 2.8-.7 3.6-1.8l1.1-1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M21.3 7.3L18.8 5v4.7l2.5-2.4zM21.3 19.3L18.8 17v4.7l2.5-2.4z" fill="currentColor" />
+              </svg>
             </button>
             <button
               className="player-button"
               onClick={onPrevious}
               title="Previous"
+              type="button"
             >
-              ⏮
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M18.2 6.3L10.4 12l7.8 5.7V6.3z" fill="currentColor" />
+                <path d="M8 6v12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
             </button>
             <button
               className="player-button player-button-play"
               onClick={onPlayPause}
               title={isPlaying ? 'Pause' : 'Play'}
+              type="button"
             >
-              {isPlaying ? '⏸' : '▶'}
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="7.2" y="6" width="3.4" height="12" rx="1" fill="currentColor" />
+                  <rect x="13.4" y="6" width="3.4" height="12" rx="1" fill="currentColor" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8.5 6.2L18 12l-9.5 5.8V6.2z" fill="currentColor" />
+                </svg>
+              )}
             </button>
             <button
               className="player-button"
               onClick={onNext}
               title="Next"
+              type="button"
             >
-              ⏭
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5.8 6.3L13.6 12l-7.8 5.7V6.3z" fill="currentColor" />
+                <path d="M16 6v12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
             </button>
             <button
               className={`player-button ${repeatMode !== 'off' ? 'active' : ''}`}
@@ -173,8 +196,15 @@ const Player: React.FC<PlayerProps> = ({
                 );
               }}
               title="Repeat"
+              type="button"
             >
-              🔁{repeatMode === 'one' && ' 1'}
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4.5 8.4h11.2c1.7 0 3 1.3 3 3v.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M16.6 5.8l2.8 2.8-2.8 2.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M19.5 15.6H8.3c-1.7 0-3-1.3-3-3v-.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M7.4 18.2l-2.8-2.8 2.8-2.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {repeatMode === 'one' && <span className="repeat-one">1</span>}
             </button>
           </div>
 
@@ -201,11 +231,19 @@ const Player: React.FC<PlayerProps> = ({
         </div>
 
         <div className="player-controls-right">
-          <button className="player-button" title="Queue">
-            📋
+          <button className="player-button" title="Queue" type="button">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 7.2h14M5 12h14M5 16.8h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
           </button>
           <div className="player-volume">
-            <span style={{ fontSize: '16px' }}>🔊</span>
+            <span className="player-volume-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5.2 14.5h3.6L13 18V6l-4.2 3.5H5.2v5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M16 9.2c1.5 1.6 1.5 4.1 0 5.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M18.8 6.8c2.8 3 2.8 7.4 0 10.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </span>
             <div className="volume-slider">
               <div
                 className="volume-fill"

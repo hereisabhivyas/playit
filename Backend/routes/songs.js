@@ -6,6 +6,7 @@ import { audioUpload } from '../middleware/upload.js';
 const router = express.Router();
 
 router.get('/', songController.getSongs);
+router.get('/mine', authenticateToken, songController.getMyUploadedSongs);
 router.post('/', songController.createSong);
 router.post('/upload', authenticateToken, audioUpload.single('audio'), songController.uploadUserSong);
 router.get('/:id/stream', songController.streamSong);

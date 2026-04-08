@@ -24,6 +24,19 @@ export const getSongs = async (req, res) => {
   }
 };
 
+export const getMyUploadedSongs = async (req, res) => {
+  try {
+    const songs = await Song.find({
+      uploadedBy: req.user.id,
+      isUserUploaded: true,
+    }).sort({ createdAt: -1 });
+
+    res.json(songs.map((song) => withStreamUrl(song, req)));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const getSongById = async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
