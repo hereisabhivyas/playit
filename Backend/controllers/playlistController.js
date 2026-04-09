@@ -1,5 +1,27 @@
 import Playlist from '../models/Playlist.js';
 
+const parseSongs = (songsInput) => {
+  if (songsInput === undefined || songsInput === null) return undefined;
+  if (Array.isArray(songsInput)) return songsInput;
+
+  if (typeof songsInput === 'string') {
+    const trimmed = songsInput.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return trimmed
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return [];
+};
+
 export const getPlaylists = async (req, res) => {
   try {
     const playlists = await Playlist.find().populate('songs');
@@ -22,11 +44,14 @@ export const getPlaylistById = async (req, res) => {
 };
 
 export const createPlaylist = async (req, res) => {
+  const songs = parseSongs(req.body.songs);
+  const coverPath = req.file ? `/uploads/images/${req.file.filename}` : req.body.cover;
+
   const playlist = new Playlist({
     name: req.body.name,
     description: req.body.description,
-    cover: req.body.cover,
-    songs: req.body.songs || [],
+    cover: coverPath,
+    songs: songs || [],
   });
 
   try {
@@ -44,10 +69,13 @@ export const updatePlaylist = async (req, res) => {
       return res.status(404).json({ message: 'Playlist not found' });
     }
 
+    const songs = parseSongs(req.body.songs);
+    const coverPath = req.file ? `/uploads/images/${req.file.filename}` : req.body.cover;
+
     if (req.body.name) playlist.name = req.body.name;
     if (req.body.description) playlist.description = req.body.description;
-    if (req.body.cover) playlist.cover = req.body.cover;
-    if (req.body.songs) playlist.songs = req.body.songs;
+    if (coverPath) playlist.cover = coverPath;
+    if (songs !== undefined) playlist.songs = songs;
     if (req.body.isLiked !== undefined) playlist.isLiked = req.body.isLiked;
 
     const updatedPlaylist = await playlist.save();

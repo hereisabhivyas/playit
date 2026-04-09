@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { UpdateProfilePayload, UserProfile, Song } from '../types';
-import { uploadUserSong, fetchUserSongs } from '../services/api';
+import type { UpdateProfilePayload, UserProfile, Song, Playlist } from '../types';
+import {
+  uploadUserSong,
+  fetchUserSongs,
+  fetchPlaylists,
+  createPlaylistByPayload,
+  updatePlaylistById,
+  deletePlaylistById,
+} from '../services/api';
 import { getFallbackImage } from '../utils/imageFallback';
 import '../styles/profile-page.css';
 
@@ -11,6 +18,7 @@ interface ProfilePageProps {
 }
 
 const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
+  const MY_PLAYLISTS_STORAGE_KEY = `playit_my_playlists_${user._id}`;
   const [username, setUsername] = useState(user.username);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
@@ -25,11 +33,64 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
   const [musicArtist, setMusicArtist] = useState('');
   const [musicGenre, setMusicGenre] = useState('');
   const [musicDuration, setMusicDuration] = useState('');
+  const [musicCoverFile, setMusicCoverFile] = useState<File | null>(null);
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [addMusicMessage, setAddMusicMessage] = useState('');
   const [addMusicError, setAddMusicError] = useState('');
   const [userSongs, setUserSongs] = useState<Song[]>([]);
   const [loadingUserSongs, setLoadingUserSongs] = useState(false);
+  const [playlistName, setPlaylistName] = useState('');
+  const [playlistDescription, setPlaylistDescription] = useState('');
+  const [playlistCoverFile, setPlaylistCoverFile] = useState<File | null>(null);
+  const [playlistCoverPreview, setPlaylistCoverPreview] = useState('');
+  const [selectedSongIds, setSelectedSongIds] = useState<string[]>([]);
+  const [myPlaylists, setMyPlaylists] = useState<Playlist[]>([]);
+  const [loadingMyPlaylists, setLoadingMyPlaylists] = useState(false);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistMessage, setPlaylistMessage] = useState('');
+  const [playlistError, setPlaylistError] = useState('');
+  const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
+
+  const getSongId = (song: Song) => String(song.id || song._id || song.title);
+  const getPlaylistId = (playlist: Playlist) => String(playlist.id || playlist._id || '');
+
+  const readMyPlaylistIds = (): string[] => {
+    const raw = localStorage.getItem(MY_PLAYLISTS_STORAGE_KEY);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw) as string[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveMyPlaylistIds = (ids: string[]) => {
+    localStorage.setItem(MY_PLAYLISTS_STORAGE_KEY, JSON.stringify(Array.from(new Set(ids))));
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error('Unable to read file'));
+      };
+      reader.onerror = () => reject(new Error('Unable to read file'));
+      reader.readAsDataURL(file);
+    });
+
+  const resetPlaylistForm = () => {
+    setPlaylistName('');
+    setPlaylistDescription('');
+    setPlaylistCoverFile(null);
+    setPlaylistCoverPreview('');
+    setSelectedSongIds([]);
+    setEditingPlaylistId(null);
+  };
 
   useEffect(() => {
     setUsername(user.username);
@@ -50,6 +111,27 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
     };
     loadUserSongs();
   }, []);
+
+  useEffect(() => {
+    const loadMyPlaylists = async () => {
+      setLoadingMyPlaylists(true);
+      const myPlaylistIds = readMyPlaylistIds();
+      if (!myPlaylistIds.length) {
+        setMyPlaylists([]);
+        setLoadingMyPlaylists(false);
+        return;
+      }
+
+      const allPlaylists = await fetchPlaylists();
+      const ownPlaylists = allPlaylists.filter((playlist) =>
+        myPlaylistIds.includes(getPlaylistId(playlist)),
+      );
+      setMyPlaylists(ownPlaylists);
+      setLoadingMyPlaylists(false);
+    };
+
+    loadMyPlaylists();
+  }, [MY_PLAYLISTS_STORAGE_KEY]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,12 +186,20 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
     }
 
     try {
-      await uploadUserSong(musicTitle, musicArtist, musicGenre, musicDuration, musicFile);
+      await uploadUserSong(
+        musicTitle,
+        musicArtist,
+        musicGenre,
+        musicDuration,
+        musicFile,
+        musicCoverFile,
+      );
       setAddMusicMessage('Music uploaded successfully!');
       setMusicTitle('');
       setMusicArtist('');
       setMusicGenre('');
       setMusicDuration('');
+      setMusicCoverFile(null);
       setMusicFile(null);
       // Refresh the user songs list
       const updatedSongs = await fetchUserSongs();
@@ -118,6 +208,113 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to upload music. Please try again.';
       setAddMusicError(errorMessage);
+    }
+  };
+
+  const toggleSongSelection = (songId: string) => {
+    setSelectedSongIds((previous) => {
+      if (previous.includes(songId)) {
+        return previous.filter((id) => id !== songId);
+      }
+      return [...previous, songId];
+    });
+  };
+
+  const handlePlaylistCoverChange = async (file: File | null) => {
+    setPlaylistCoverFile(file);
+    if (!file) {
+      setPlaylistCoverPreview('');
+      return;
+    }
+
+    try {
+      const preview = await fileToDataUrl(file);
+      setPlaylistCoverPreview(preview);
+    } catch {
+      setPlaylistError('Unable to read selected cover image.');
+    }
+  };
+
+  const handlePlaylistSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPlaylistMessage('');
+    setPlaylistError('');
+
+    if (!playlistName.trim()) {
+      setPlaylistError('Playlist name is required.');
+      return;
+    }
+
+    setPlaylistLoading(true);
+
+    try {
+      const editingPlaylist = editingPlaylistId
+        ? myPlaylists.find((playlist) => getPlaylistId(playlist) === editingPlaylistId)
+        : null;
+
+      const coverValue = editingPlaylist?.cover || getFallbackImage('Playlist', 200);
+
+      const payload = {
+        name: playlistName.trim(),
+        description: playlistDescription.trim() || 'My custom playlist',
+        cover: coverValue,
+        songs: selectedSongIds,
+      };
+
+      if (editingPlaylistId) {
+        const updated = await updatePlaylistById(editingPlaylistId, payload, playlistCoverFile);
+        setMyPlaylists((previous) =>
+          previous.map((playlist) =>
+            getPlaylistId(playlist) === editingPlaylistId ? updated : playlist,
+          ),
+        );
+        setPlaylistMessage('Playlist updated successfully.');
+      } else {
+        const created = await createPlaylistByPayload(payload, playlistCoverFile);
+        const createdId = getPlaylistId(created);
+        setMyPlaylists((previous) => [created, ...previous]);
+        saveMyPlaylistIds([...readMyPlaylistIds(), createdId]);
+        setPlaylistMessage('Playlist created successfully.');
+      }
+
+      resetPlaylistForm();
+    } catch (error) {
+      setPlaylistError(error instanceof Error ? error.message : 'Unable to save playlist.');
+    } finally {
+      setPlaylistLoading(false);
+    }
+  };
+
+  const handleEditPlaylist = (playlist: Playlist) => {
+    setEditingPlaylistId(getPlaylistId(playlist));
+    setPlaylistName(playlist.name);
+    setPlaylistDescription(playlist.description || '');
+    setPlaylistCoverFile(null);
+    setPlaylistCoverPreview(playlist.cover);
+    setSelectedSongIds(playlist.songs.map((song) => getSongId(song)));
+    setPlaylistMessage('');
+    setPlaylistError('');
+  };
+
+  const handleDeletePlaylist = async (playlistId: string) => {
+    const shouldDelete = window.confirm('Delete this playlist? This action cannot be undone.');
+    if (!shouldDelete) return;
+
+    setPlaylistMessage('');
+    setPlaylistError('');
+
+    try {
+      await deletePlaylistById(playlistId);
+      setMyPlaylists((previous) =>
+        previous.filter((playlist) => getPlaylistId(playlist) !== playlistId),
+      );
+      saveMyPlaylistIds(readMyPlaylistIds().filter((id) => id !== playlistId));
+      if (editingPlaylistId === playlistId) {
+        resetPlaylistForm();
+      }
+      setPlaylistMessage('Playlist deleted successfully.');
+    } catch (error) {
+      setPlaylistError(error instanceof Error ? error.message : 'Unable to delete playlist.');
     }
   };
 
@@ -246,6 +443,7 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
             <input
               type="file"
               accept="image/*"
+              onChange={(event) => setMusicCoverFile(event.currentTarget.files?.[0] || null)}
             />
           </label>
 
@@ -266,6 +464,139 @@ const ProfilePage = ({ user, onSave }: ProfilePageProps) => {
             Upload Music
           </button>
         </form>
+      </div>
+
+      <div className="my-playlist-card">
+        <h2>Make My Own Playlist</h2>
+        <p>Create custom playlists, upload a cover, and add your songs.</p>
+
+        <form onSubmit={handlePlaylistSubmit} className="playlist-builder-form">
+          <label>
+            Playlist Name *
+            <input
+              value={playlistName}
+              onChange={(event) => setPlaylistName(event.target.value)}
+              placeholder="Road Trip Vibes"
+              required
+            />
+          </label>
+
+          <label>
+            Description
+            <input
+              value={playlistDescription}
+              onChange={(event) => setPlaylistDescription(event.target.value)}
+              placeholder="Short description"
+            />
+          </label>
+
+          <label>
+            Cover Image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) =>
+                void handlePlaylistCoverChange(event.currentTarget.files?.[0] || null)
+              }
+            />
+          </label>
+
+          <div className="playlist-cover-preview-wrap">
+            <span>Cover Preview</span>
+            <img
+              src={playlistCoverPreview || getFallbackImage('Playlist', 120)}
+              alt="playlist cover preview"
+              className="playlist-cover-preview"
+            />
+          </div>
+
+          <div className="playlist-song-selector">
+            <div className="playlist-song-selector-header">
+              <strong>Add Songs</strong>
+              <span>{selectedSongIds.length} selected</span>
+            </div>
+            {loadingUserSongs ? (
+              <p className="playlist-help-text">Loading your songs...</p>
+            ) : userSongs.length === 0 ? (
+              <p className="playlist-help-text">Upload songs first from the Add My Music section.</p>
+            ) : (
+              <div className="playlist-song-list">
+                {userSongs.map((song) => {
+                  const songId = getSongId(song);
+                  return (
+                    <label key={songId} className="playlist-song-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedSongIds.includes(songId)}
+                        onChange={() => toggleSongSelection(songId)}
+                      />
+                      <span>{song.title} - {song.artist}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {playlistMessage && <p className="playlist-success">{playlistMessage}</p>}
+          {playlistError && <p className="playlist-error">{playlistError}</p>}
+
+          <div className="playlist-actions">
+            <button type="submit" className="playlist-submit" disabled={playlistLoading}>
+              {playlistLoading
+                ? 'Saving...'
+                : editingPlaylistId
+                  ? 'Update Playlist'
+                  : 'Create Playlist'}
+            </button>
+            {editingPlaylistId && (
+              <button
+                type="button"
+                className="playlist-cancel"
+                onClick={resetPlaylistForm}
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="my-playlist-list">
+          <h3>My Playlists</h3>
+          {loadingMyPlaylists ? (
+            <p className="playlist-help-text">Loading playlists...</p>
+          ) : myPlaylists.length === 0 ? (
+            <p className="playlist-help-text">No playlist yet. Create your first one above.</p>
+          ) : (
+            <div className="playlist-grid">
+              {myPlaylists.map((playlist) => {
+                const playlistId = getPlaylistId(playlist);
+                return (
+                  <div className="playlist-item" key={playlistId}>
+                    <img src={playlist.cover} alt={playlist.name} className="playlist-item-cover" />
+                    <div className="playlist-item-body">
+                      <h4>{playlist.name}</h4>
+                      <p>{playlist.description}</p>
+                      <small>{playlist.songs.length} song(s)</small>
+                    </div>
+                    <div className="playlist-item-actions">
+                      <button type="button" onClick={() => handleEditPlaylist(playlist)}>
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => handleDeletePlaylist(playlistId)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {userSongs.length > 0 && (

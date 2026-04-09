@@ -44,14 +44,6 @@ const MainContent: React.FC<MainContentProps> = ({ onSongSelect, onPlaylistSelec
           <div className="loading">Loading...</div>
         ) : (
           <>
-            {/* Hero Section */}
-            <section className="hero-section">
-              <h1 className="hero-title">Good Morning, Music Lover ♫</h1>
-              <p className="hero-description">
-                Discover new music, create playlists, and enjoy your favorite tracks anytime, anywhere.
-              </p>
-            </section>
-
             {/* Featured Playlists */}
             {playlists.length > 0 && (
               <section className="section">

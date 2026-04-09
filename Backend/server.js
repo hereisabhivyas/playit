@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import songRoutes from './routes/songs.js';
 import playlistRoutes from './routes/playlists.js';
 import artistRoutes from './routes/artists.js';
@@ -17,6 +18,7 @@ const DB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/playit';
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // MongoDB Connection
 mongoose.set('bufferCommands', false);

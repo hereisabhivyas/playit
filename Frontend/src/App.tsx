@@ -8,7 +8,7 @@ import Player from './components/Player';
 import AuthPage from './pages/AuthPage';
 import ProfilePage from './pages/ProfilePage';
 import SearchPage from './pages/SearchPage';
-import { fetchMyProfile, updateMyProfile } from './services/api';
+import { fetchMyProfile, fetchPlaylistById, fetchSongById, updateMyProfile } from './services/api';
 import type { Playlist, Song, UpdateProfilePayload, UserProfile } from './types/index';
 
 const AUTH_TOKEN_KEY = 'playit_auth_token';
@@ -54,6 +54,23 @@ function App() {
     index: 0,
   });
 
+  const getSongKey = (song: Song) => String(song.id || song._id || song.title);
+  const isPlayableSong = (value: unknown): value is Song => {
+    if (!value || typeof value !== 'object') return false;
+    const song = value as Partial<Song>;
+    return Boolean(song.id || song._id || song.title);
+  };
+
+  const extractSongId = (value: unknown): string | null => {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object') {
+      const maybeSong = value as Partial<Song>;
+      if (maybeSong.id) return String(maybeSong.id);
+      if (maybeSong._id) return String(maybeSong._id);
+    }
+    return null;
+  };
+
   const navigateToView = (view: AppView) => {
     const base = viewState.history.slice(0, viewState.index + 1);
     if (base[base.length - 1] !== view) {
@@ -95,8 +112,16 @@ function App() {
   const handleSongSelect = (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
-    setQueue([song]);
-    setCurrentIndex(0);
+    const selectedSongKey = getSongKey(song);
+    const existingIndex = queue.findIndex((queuedSong) => getSongKey(queuedSong) === selectedSongKey);
+
+    if (existingIndex >= 0) {
+      setCurrentIndex(existingIndex);
+    } else {
+      const nextQueue = [...queue, song];
+      setQueue(nextQueue);
+      setCurrentIndex(nextQueue.length - 1);
+    }
 
     const songId = song.id || (song as Song & { _id?: string })._id || song.title;
     const historyItem: HistoryItem = {
@@ -111,7 +136,7 @@ function App() {
     setPlayHistory((previous) => [historyItem, ...previous.filter((item) => item.key !== historyItem.key)].slice(0, 5));
   };
 
-  const handlePlaylistSelect = (playlist: Playlist) => {
+  const handlePlaylistSelect = async (playlist: Playlist) => {
     const playlistId = playlist.id || (playlist as Playlist & { _id?: string })._id || playlist.name;
     const historyItem: HistoryItem = {
       key: `playlist-${playlistId}`,
@@ -122,8 +147,32 @@ function App() {
       playlist,
     };
 
+    let playlistSongs = (playlist.songs || []).filter(isPlayableSong);
+    if (playlistSongs.length === 0 && playlistId) {
+      const freshPlaylist = await fetchPlaylistById(String(playlistId));
+      if (freshPlaylist) {
+        playlistSongs = (freshPlaylist.songs || []).filter(isPlayableSong);
+
+        if (playlistSongs.length === 0) {
+          const songIds = (freshPlaylist.songs || [])
+            .map((item) => extractSongId(item))
+            .filter((id): id is string => Boolean(id));
+          if (songIds.length > 0) {
+            const fetchedSongs = await Promise.all(songIds.map((id) => fetchSongById(id)));
+            playlistSongs = fetchedSongs.filter((song): song is Song => Boolean(song));
+          }
+        }
+      }
+    }
+
+    if (playlistSongs.length > 0) {
+      setQueue(playlistSongs);
+      setCurrentIndex(0);
+      setCurrentSong(playlistSongs[0]);
+      setIsPlaying(true);
+    }
+
     setPlayHistory((previous) => [historyItem, ...previous.filter((item) => item.key !== historyItem.key)].slice(0, 5));
-    navigateToView('library');
   };
 
   const handlePlayPause = () => {
@@ -131,19 +180,33 @@ function App() {
   };
 
   const handleNext = () => {
-    if (queue.length > 0) {
-      const nextIndex = (currentIndex + 1) % queue.length;
-      setCurrentIndex(nextIndex);
-      setCurrentSong(queue[nextIndex]);
-    }
+    if (queue.length === 0) return;
+
+    const activeSongKey = currentSong ? getSongKey(currentSong) : null;
+    const activeIndex = activeSongKey
+      ? queue.findIndex((song) => getSongKey(song) === activeSongKey)
+      : currentIndex;
+    const safeIndex = activeIndex >= 0 ? activeIndex : currentIndex;
+    const nextIndex = (safeIndex + 1) % queue.length;
+
+    setCurrentIndex(nextIndex);
+    setCurrentSong(queue[nextIndex]);
+    setIsPlaying(true);
   };
 
   const handlePrevious = () => {
-    if (queue.length > 0) {
-      const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-      setCurrentIndex(prevIndex);
-      setCurrentSong(queue[prevIndex]);
-    }
+    if (queue.length === 0) return;
+
+    const activeSongKey = currentSong ? getSongKey(currentSong) : null;
+    const activeIndex = activeSongKey
+      ? queue.findIndex((song) => getSongKey(song) === activeSongKey)
+      : currentIndex;
+    const safeIndex = activeIndex >= 0 ? activeIndex : currentIndex;
+    const prevIndex = (safeIndex - 1 + queue.length) % queue.length;
+
+    setCurrentIndex(prevIndex);
+    setCurrentSong(queue[prevIndex]);
+    setIsPlaying(true);
   };
 
   const handleAuthSuccess = (token: string, user: UserProfile) => {
@@ -212,8 +275,8 @@ function App() {
       return;
     }
 
-    if (item.type === 'playlist') {
-      navigateToView('library');
+    if (item.type === 'playlist' && item.playlist) {
+      void handlePlaylistSelect(item.playlist);
     }
   };
 

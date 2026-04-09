@@ -11,6 +11,8 @@ import type {
 
 const API_BASE_URL = 'http://localhost:5000/api';
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
+const DEFAULT_MEDIA_PLACEHOLDER =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" fill="%231c1c1c"/><circle cx="90" cy="90" r="54" fill="%232a2a2a"/><path d="M102 54v54.8a14 14 0 1 1-8-12.6V63.6l38-9.6v44.8a14 14 0 1 1-8-12.6V46l-22 8z" fill="%23bbbbbb"/></svg>';
 
 const getErrorMessage = async (response: Response): Promise<string> => {
   try {
@@ -28,8 +30,12 @@ const authHeaders = (token: string): HeadersInit => ({
 });
 
 const normalizeMediaUrl = (value?: string): string => {
-  if (!value) return '';
+  if (!value) return DEFAULT_MEDIA_PLACEHOLDER;
   const trimmed = value.trim();
+
+  if (!trimmed || trimmed.includes('via.placeholder.com')) {
+    return DEFAULT_MEDIA_PLACEHOLDER;
+  }
 
   if (/^(https?:|data:|blob:)/i.test(trimmed)) {
     return trimmed;
@@ -46,11 +52,12 @@ const normalizeSong = (song: Song): Song => ({
   ...song,
   id: song.id || (song as Song & { _id?: string })._id || '',
   cover: normalizeMediaUrl(song.cover),
-  streamUrl: normalizeMediaUrl(song.streamUrl),
+  streamUrl: song.streamUrl ? normalizeMediaUrl(song.streamUrl) : undefined,
 });
 
 const normalizePlaylist = (playlist: Playlist): Playlist => ({
   ...playlist,
+  id: playlist.id || (playlist as Playlist & { _id?: string })._id || '',
   cover: normalizeMediaUrl(playlist.cover),
   songs: playlist.songs?.map(normalizeSong) || [],
 });
@@ -105,6 +112,7 @@ export const uploadUserSong = async (
   genre: string,
   duration: string,
   audioFile: File,
+  coverFile?: File | null,
 ): Promise<Song | null> => {
   try {
     const token = localStorage.getItem('playit_auth_token');
@@ -118,6 +126,9 @@ export const uploadUserSong = async (
     formData.append('genre', genre);
     formData.append('duration', duration ? String(parseInt(duration, 10) || 0) : '0');
     formData.append('audio', audioFile);
+    if (coverFile) {
+      formData.append('cover', coverFile);
+    }
 
     const response = await fetch(`${API_BASE_URL}/songs/upload`, {
       method: 'POST',
@@ -195,6 +206,73 @@ export const createPlaylist = async (playlist: Playlist): Promise<Playlist | nul
   } catch (error) {
     console.error('Error creating playlist:', error);
     return null;
+  }
+};
+
+export interface PlaylistPayload {
+  name: string;
+  description: string;
+  cover: string;
+  songs: string[];
+}
+
+const toPlaylistFormData = (payload: PlaylistPayload, coverFile?: File | null): FormData => {
+  const formData = new FormData();
+  formData.append('name', payload.name);
+  formData.append('description', payload.description);
+  formData.append('songs', JSON.stringify(payload.songs));
+
+  if (payload.cover) {
+    formData.append('cover', payload.cover);
+  }
+
+  if (coverFile) {
+    formData.append('cover', coverFile);
+  }
+
+  return formData;
+};
+
+export const createPlaylistByPayload = async (
+  payload: PlaylistPayload,
+  coverFile?: File | null,
+): Promise<Playlist> => {
+  const response = await fetch(`${API_BASE_URL}/playlists`, {
+    method: 'POST',
+    body: toPlaylistFormData(payload, coverFile),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return normalizePlaylist((await response.json()) as Playlist);
+};
+
+export const updatePlaylistById = async (
+  playlistId: string,
+  payload: PlaylistPayload,
+  coverFile?: File | null,
+): Promise<Playlist> => {
+  const response = await fetch(`${API_BASE_URL}/playlists/${playlistId}`, {
+    method: 'PUT',
+    body: toPlaylistFormData(payload, coverFile),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
+  }
+
+  return normalizePlaylist((await response.json()) as Playlist);
+};
+
+export const deletePlaylistById = async (playlistId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/playlists/${playlistId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response));
   }
 };
 

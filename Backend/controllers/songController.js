@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import Song from '../models/Song.js';
 
+const USER_SONG_DEFAULT_COVER =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rect width="180" height="180" fill="%231c1c1c"/><circle cx="90" cy="90" r="54" fill="%232a2a2a"/><path d="M102 54v54.8a14 14 0 1 1-8-12.6V63.6l38-9.6v44.8a14 14 0 1 1-8-12.6V46l-22 8z" fill="%23bbbbbb"/></svg>';
+
 const getAudioFilePath = (song) => path.resolve(process.cwd(), 'uploads', 'audio', song.audioFileName);
 
 const withStreamUrl = (song, req) => {
@@ -126,24 +129,30 @@ export const uploadUserSong = async (req, res) => {
   try {
     const { title, artist, genre, duration } = req.body;
     const userId = req.user.id;
+    const uploadedAudio = req.files?.audio?.[0];
+    const uploadedCover = req.files?.cover?.[0];
 
     if (!title?.trim() || !artist?.trim() || !genre?.trim()) {
       return res.status(400).json({ message: 'Title, artist, and genre are required.' });
     }
 
-    if (!req.file) {
+    if (!uploadedAudio) {
       return res.status(400).json({ message: 'Audio file is required.' });
     }
+
+    const coverPath = uploadedCover
+      ? `/uploads/images/${uploadedCover.filename}`
+      : USER_SONG_DEFAULT_COVER;
 
     const song = new Song({
       title: title.trim(),
       artist: artist.trim(),
       album: title.trim(),
       duration: duration ? parseInt(duration, 10) : 0,
-      cover: 'https://via.placeholder.com/180x180?text=User+Music',
+      cover: coverPath,
       genre: genre.trim(),
-      audioFileName: req.file.filename,
-      audioMimeType: req.file.mimetype,
+      audioFileName: uploadedAudio.filename,
+      audioMimeType: uploadedAudio.mimetype,
       uploadedBy: userId,
       isUserUploaded: true,
     });
